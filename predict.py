@@ -88,7 +88,7 @@ def cellsCount(file_id_name):
         ## Open CSV file to record nucleus counts
         with open(csv_file_path, mode='w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(["Tile", "Dat File", "Epithelial", "Lymphocyte", "Macrophage", "Neutrophil"])
+            writer.writerow(["Tile", "Dat File", "Background", "Epithelial", "Lymphocyte", "Macrophage", "Neutrophil"])
             
             # Loop through all .dat files in the directory
             for i in range(len(tile_paths)):
@@ -111,6 +111,7 @@ def cellsCount(file_id_name):
                 writer.writerow([
                     tile_name,
                     dat_name,
+                    class_counts.get(0, 0),  #background
                     class_counts.get(1, 0),  # Epithelial
                     class_counts.get(2, 0),  # Lymphocyte
                     class_counts.get(3, 0),  # Macrophage
@@ -121,17 +122,13 @@ def cellsCount(file_id_name):
                 # Read the corresponding tile image for visualization
                 tile_img = imread(tile_paths[i])
 
-                filtered_preds = {}
-                for key, nucleus in tile_preds.items():
-                    if nucleus["type"] != 0:  # Skip background class
-                        filtered_preds[key] = nucleus
-
                 # Create the overlay image
                 overlaid_predictions = overlay_prediction_contours(
                     canvas=tile_img,
                     inst_dict=tile_preds,
                     draw_dot=False,
                     type_colours={
+                        0: ("Background", (255, 255, 255, 0)), #transparent
                         1: ("Epithelial", (255, 0, 0)),
                         2: ("Lymphocyte", (255, 255, 0)),
                         3: ("Macrophage", (0, 255, 0)),
@@ -148,6 +145,7 @@ def cellsCount(file_id_name):
             writer.writerow([
                 "END",
                 "Total",
+                total_counts.get(0, 0), #total background
                 total_counts.get(1, 0),  # Total Epithelial
                 total_counts.get(2, 0),  # Total Lymphocyte
                 total_counts.get(3, 0),  # Total Macrophage
