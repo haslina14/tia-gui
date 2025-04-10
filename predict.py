@@ -121,6 +121,11 @@ def cellsCount(file_id_name):
                 # Read the corresponding tile image for visualization
                 tile_img = imread(tile_paths[i])
 
+                filtered_preds = {}
+                for key, nucleus in tile_preds.items():
+                    if nucleus["type"] != 0:  # Skip background class
+                        filtered_preds[key] = nucleus
+
                 # Create the overlay image
                 overlaid_predictions = overlay_prediction_contours(
                     canvas=tile_img,
@@ -143,10 +148,10 @@ def cellsCount(file_id_name):
             writer.writerow([
                 "END",
                 "Total",
-                total_counts.get(0, 0),  # Total Epithelial
-                total_counts.get(1, 0),  # Total Lymphocyte
-                total_counts.get(2, 0),  # Total Macrophage
-                total_counts.get(3, 0),  # Total Neutrophil
+                total_counts.get(1, 0),  # Total Epithelial
+                total_counts.get(2, 0),  # Total Lymphocyte
+                total_counts.get(3, 0),  # Total Macrophage
+                total_counts.get(4, 0),  # Total Neutrophil
             ])   
 
 
