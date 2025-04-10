@@ -111,10 +111,10 @@ def cellsCount(file_id_name):
                 writer.writerow([
                     tile_name,
                     dat_name,
-                    class_counts.get(0, 0),  # Epithelial
-                    class_counts.get(1, 0),  # Lymphocyte
-                    class_counts.get(2, 0),  # Macrophage
-                    class_counts.get(3, 0),  # Neutrophil
+                    class_counts.get(1, 0),  # Epithelial
+                    class_counts.get(2, 0),  # Lymphocyte
+                    class_counts.get(3, 0),  # Macrophage
+                    class_counts.get(4, 0),  # Neutrophil
                 
                 ])
                     
@@ -127,10 +127,10 @@ def cellsCount(file_id_name):
                     inst_dict=tile_preds,
                     draw_dot=False,
                     type_colours={
-                        0: ("Epithelial", (255, 0, 0)),
-                        1: ("Lymphocyte", (255, 255, 0)),
-                        2: ("Macrophage", (0, 255, 0)),
-                        3: ("Neutrophil", (0, 0, 255)),
+                        1: ("Epithelial", (255, 0, 0)),
+                        2: ("Lymphocyte", (255, 255, 0)),
+                        3: ("Macrophage", (0, 255, 0)),
+                        4: ("Neutrophil", (0, 0, 255)),
                     },
                     line_thickness=4,    
                 )
