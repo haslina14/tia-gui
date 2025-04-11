@@ -191,12 +191,12 @@
 
         function launchPrediction(){
             if (!uploadedFileName) {
-                patchStatus.textContent = 'No file uploaded'
-                patchStatus.style.color = 'red'
+                predictStatus.textContent = 'No file uploaded'
+                predictStatus.style.color = 'red'
                 return
             }
 
-            predictStatus.textContent = 'Creating patches started...'
+            predictStatus.textContent = 'Prediction process started...'
             predictStatus.style.color = 'blue'
 
             fetch('/predict', {
