@@ -94,7 +94,53 @@ def patch_file():
             "message": "An unexpected error occurred",
             "error": str(e)
         })
+
+@app.route('/predict', methods=['POST'])
+def predict_file():
+    data = request.get_json()
+    filename = data.get('filename')
+
+    if not filename:
+        return jsonify({
+            "success": False, 
+            "message": "No filename provided"
+        })
     
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({
+            "success": False, 
+            "message": "File not found"
+        })
+    
+    try:
+
+        #file_id = os.path.splitext(filename)[0]
+
+        result = subprocess.run(
+            ["python", predict_script_path, file_path],
+            capture_output=True,
+            text=True,
+            check=True)
+        return jsonify({
+            "success": True, 
+            "filename": filename,
+            "output": result.stdout
+        })
+    except subprocess.CalledProcessError as e:
+        return jsonify({
+            "success": False,
+            "message": "Predicting failed",
+            "error": e.stderr
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": "An unexpected error occurred",
+            "error": str(e)
+        })
+
 @app.route('/merge', methods=['POST'])
 def merge_file():
     data = request.get_json()
