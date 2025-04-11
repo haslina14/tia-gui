@@ -6,6 +6,7 @@ from datetime import datetime
 from time import sleep
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from openslide import OpenSlide
 from tiatoolbox import data
 from tiatoolbox.tools import stainnorm
 from tiatoolbox.wsicore.wsireader import WSIReader
@@ -38,22 +39,32 @@ def main(file_path):
         os.makedirs(output_dir_cell, exist_ok=True)
 
         #initialize counters
+        level=0
         total_patches = 0
         patches_with_cells = 0
         patches_without_cells = 0
 
         #function to read slides and convert into numpy array
-        def read_slide(image_data, x, y, width, height):
-            img_height, img_width, _ = image_data.shape
-            # Ensure the requested patch stays within bounds
-            width = min(width, img_width - x)  # Adjust width if it exceeds the image width
-            height = min(height, img_height - y)  # Adjust height if it exceeds the image height
-                
-            region = image_data[y:y + height, x:x + width]
-            return np.asarray(region)
+        def read_slide(image_data, x, y, width, height, if_openslide = True):
+            if if_openslide:
+                region = image_data.read_region((x, y), level, (width, height))
+                region = region.convert('RGB')
+                region = np.asarray(region)
+                return region
+            else:
+                img_height, img_width, _ = image_data.shape
+                # Ensure the requested patch stays within bounds
+                width = min(width, img_width - x)  # Adjust width if it exceeds the image width
+                height = min(height, img_height - y)  # Adjust height if it exceeds the image height
+                    
+                region = image_data[y:y + height, x:x + width]
+                return np.asarray(region)
         
-        def generate_patches(image_data, output_dir_blank, output_dir_cell, patch_size, threshold_std, csv_file_path, total_patches, patches_with_cells, patches_without_cells):
-            img_height, img_width, _ = image_data.shape
+        def generate_patches(image_data, if_openslide, output_dir_blank, output_dir_cell, patch_size, threshold_std, csv_file_path, total_patches, patches_with_cells, patches_without_cells):
+            if if_openslide:
+                img_width, img_height = image_data.level_dimensions[0]
+            else:
+                img_height, img_width, _ = image_data.shape
             print(f"Image dimensions: {img_width}x{img_height}")
             with open(csv_file_path, mode='w', newline='') as file:
                 writer = csv.writer(file)
@@ -63,7 +74,7 @@ def main(file_path):
                 for y in range(0, img_height, patch_size):
                         for x in range(0, img_width, patch_size):
                             # Adjust the patch size near the edges
-                            slide_patch = read_slide(image_data, x, y, patch_size, patch_size)
+                            slide_patch = read_slide(image_data, x, y, patch_size, patch_size, if_openslide)
                             total_patches += 1
 
                             patch_std = np.mean(np.std(slide_patch, axis=-1))
@@ -96,8 +107,20 @@ def main(file_path):
 
         #if openslide cannot open use tifffile
         # Load the image using tifffile
-        with tifffile.TiffFile(file_path) as tif:
-            slide = tif.pages[2].asarray()
+
+        if file_path.endswith('.svs') or file_path.endswith('.tif'):
+            slide = OpenSlide(file_path)
+            if_openslide = True
+
+        elif file_path.endswith('.bif'):
+            with tifffile.TiffFile(file_path) as tif:
+                slide_array = tif.pages[2].asarray()
+                if_openslide = False
+        else:
+            raise ValueError("Unsupported file type")
+
+        #with tifffile.TiffFile(file_path) as tif:
+            #slide = tif.pages[2].asarray()
 
         #generate patches and save the patches
         total_patches, patches_with_cells, patches_without_cells = generate_patches(
