@@ -108,11 +108,14 @@
         const patchContainer = document.getElementById('patch-container');
         const patchButton = document.getElementById('patch-btn');
         const patchStatus = document.getElementById('patch-status');
+        const predictButton = document.getElementById('predict-btn');
+        const predictStatus = document.getElementById('predict-status');
 
         let uploadedFileName = '';
 
         fileInput.addEventListener('change', uploadFile);
         patchButton.addEventListener('click', launchPatching);
+        predictButton.addEventListener('click', launchPrediction);
 
 
         function uploadFile(event) {
@@ -182,6 +185,41 @@
             .catch(error => {
                 patchStatus.textContent = 'Patching error';
                 patchStatus.style.color = 'red';
+                console.error('Error:', error);
+            });
+        }
+
+        function launchPrediction(){
+            if (!uploadedFileName) {
+                patchStatus.textContent = 'No file uploaded'
+                patchStatus.style.color = 'red'
+                return
+            }
+
+            predictStatus.textContent = 'Creating patches started...'
+            predictStatus.style.color = 'blue'
+
+            fetch('/predict', {
+                method: 'POST', headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: uploadedFileName }) 
+        })
+        .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    predictStatus.textContent = 'Predicting completed successfully!';
+                    predictStatus.style.color = 'green';
+                    console.log('Predict Output:', data.output);
+                } else {
+                    predictStatus.textContent = `Predicting failed: ${data.message}`;
+                    predictStatus.style.color = 'red';
+                    console.error('Predict Error:', data.error);
+                }
+            })
+            .catch(error => {
+                predictStatus.textContent = 'Predicting error';
+                predictStatus.style.color = 'red';
                 console.error('Error:', error);
             });
         }
