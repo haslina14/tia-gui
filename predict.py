@@ -1,4 +1,5 @@
-import logging, warnings
+import logging
+from logging.handlers import RotatingFileHandler
 import cv2
 import joblib
 import matplotlib as mpl
@@ -14,12 +15,21 @@ from tiatoolbox.utils.misc import imread
 from tiatoolbox.utils.visualization import overlay_prediction_contours
 from natsort import natsorted
 from collections import Counter
+import traceback
 
+log_directory = "./uploads/logs"
+os.makedirs(log_directory, exist_ok=True)
+log_file_path = os.path.join(log_directory, "prediction.log")
 
 if logging.getLogger().hasHandlers():
     logging.getLogger().handlers.clear()
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[
+                        logging.StreamHandler(),
+                        RotatingFileHandler(log_file_path, maxBytes=10485760, backupCount=5)
+                    ])
 
 def predict(file_id_name):
     """Run the prediction for a given file_id and normalization method."""
@@ -62,7 +72,8 @@ def predict(file_id_name):
         return None
 
     logging.info(f"Finished processing file id: {full_id}")
-    return full_id
+    #return full_id
+    return True
 
 def cellsCount(file_id_name):
     try:
@@ -157,7 +168,7 @@ def cellsCount(file_id_name):
         elapsed_time = time.time() - start_time
         minutes = int(elapsed_time //60)
         seconds = int(elapsed_time % 60)
-        print(f"Elapsed time: {minutes} minutes {seconds} seconds")
+        print(f"Elapsed time for counting cells: {minutes} minutes {seconds} seconds")
 
     except Exception as e:
         print(f"Error in cellsCount: {str(e)}")
@@ -177,32 +188,74 @@ def main(file_path):
     time_log_path = f"./uploads/{file_id_name}/predict_log.txt"
     os.makedirs(os.path.dirname(time_log_path), exist_ok=True)
 
+    
     with open(time_log_path, 'a') as time_log_file:
         start_time = time.time()
+
+        #unique run identifier
+        run_id = f"{file_id_name}_int{(start_time)}"
+
+        logging.info(f"Startig to process run {run_id} for file: {file_id_name}")
+
         try:
             result = predict(file_id_name)
-            if result:
+            if not result:
+                logging.warning(f"Prediction failed for file: {file_id_name}")
+                time_log_file.write(f"File ID: {file_id_name}, Start time: {time.ctime(start_time)}")
+                return
+            
+            logging.info(f"Prediction completed successfully for file: {file_id_name}") #if success
+                #elapsed_time = time.time() - start_time
+                #minutes = int(elapsed_time // 60)
+                #seconds = int(elapsed_time % 60)
+                
+                #logging.info(f"Completed processing for file id: {file_id_name}")
+
+            try:
+                cellsCount(file_id_name)
+
                 elapsed_time = time.time() - start_time
                 minutes = int(elapsed_time // 60)
                 seconds = int(elapsed_time % 60)
+                success_msg = f"File ID: {file_id_name}, Start Time: {time.ctime(start_time)}, " \
+                    f"Elapsed Time to predict and cells count: {minutes} minutes {seconds} seconds\n"
                 
-                logging.info(f"Completed processing for file id: {result}")
+                logging.info(f"Completed full processing for file: {file_id_name} in {minutes}m {seconds}s")
+                time_log_file.write(success_msg)
+
+            except Exception as e:
+                elapsed_time = time.time() - start_time
+                minutes = int(elapsed_time // 60)
+                seconds = int(elapsed_time % 60)
+
+                error_msg = f"File ID: {file_id_name}, Start Time: {time.ctime(start_time)}, " \
+                    f"Partial failed process (only cellsCount), Elapsed time: {minutes}m {seconds}s, Error: {str(e)}\n"
                 
-                time_log_file.write(f"File ID: {file_id_name}, Start Time: {time.ctime(start_time)}, "
-                                    f"Elapsed Time: {minutes} minutes {seconds} seconds\n")
-                try:
-                    cellsCount(file_id_name)
-                except Exception as e:
-                    import traceback
-                    error_details = traceback.format_exc()
-                    logging.error(f"Error in cellsCount for {file_id_name}: {str(e)}\n{error_details}")
-                    time_log_file.write(f"File ID: {file_id_name}, cellsCount Exception: {str(e)}\n")
-            else:
-                time_log_file.write(f"File ID: {file_id_name}, Processing Failed\n")
+                logging.error(f"Cell count failed for file {file_id_name}: {str(e)}")
+                logging.error(f"Trace: {traceback.format_exc()}")
+                time_log_file.write(error_msg)
+
+                '''
+                import traceback
+                error_details = traceback.format_exc()
+                logging.error(f"Error in cellsCount for {file_id_name}: {str(e)}\n{error_details}")
+                time_log_file.write(f"File ID: {file_id_name}, cellsCount Exception: {str(e)}\n")'''
+            #else:
+                #time_log_file.write(f"File ID: {file_id_name}, Processing Failed\n")
         except Exception as exc:
-            logging.error(f"File id {file_id_name} generated an exception: {exc}")
-                # Record the exception in the time log file
-            time_log_file.write(f"File ID: {file_id_name}, Exception: {exc}\n")
+            elapsed_time = time.time() - start_time
+            minutes = int(elapsed_time // 60)
+            seconds = int(elapsed_time % 60)
+
+            error_msg = f"File ID: {file_id_name}, Start Time: {time.ctime(start_time)}, " \
+                f"Failed overall process, Elapsed time: {minutes}m {seconds}s, Error: {str(e)}\n"
+                
+            logging.error(f"Processing failed for file {file_id_name}: {str(e)}")
+            logging.error(f"Trace: {traceback.format_exc()}")
+            time_log_file.write(error_msg)
+            
+            #logging.error(f"File id {file_id_name} generated an exception: {exc}")  
+            #time_log_file.write(f"File ID: {file_id_name}, Exception: {exc}\n") # Record the exception in the time log file
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
